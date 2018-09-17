@@ -22,8 +22,8 @@ namespace RepeairFailedVOD
 
                 OssVodBranchWS VodBranch = new OssVodBranchWS();
 
-                VodBranch.Credentials = new NetworkCredential("IPTVServices", "P23R@vor", "BRMSK");
-                VodBranch.Url = "http://78.107.199.132/ossVodBranchWS/branch.asmx";
+                VodBranch.Credentials = new NetworkCredential("IPTVServices", "P23R@vor_gol", "BRMSK");
+                VodBranch.Url = "http://78.107.199.xxx/ossVodBranchWS/branch.asmx";
 
 
 
@@ -73,7 +73,10 @@ namespace RepeairFailedVOD
                         {
                             // We want to know the health of Cluster
                             if (AssetServerMap.VServerDiskInformation.VServerInformation.ClusterId == BadCluster.ClusterId) 
-                                { TryToDo = false; }
+                            {
+                                TryToDo = false;
+                                break;
+                            }
                         }
 
                         if (TryToDo)
