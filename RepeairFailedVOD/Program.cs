@@ -22,8 +22,8 @@ namespace RepeairFailedVOD
 
                 OssVodBranchWS VodBranch = new OssVodBranchWS();
 
-                VodBranch.Credentials = new NetworkCredential("IPTVServices", "P23R@vor_gol", "BRMSK");
-                VodBranch.Url = "http://78.107.199.xxx/ossVodBranchWS/branch.asmx";
+                VodBranch.Credentials = new NetworkCredential("IPTVServices", "P23R@vor", "BRMSK");
+                VodBranch.Url = "http://78.107.199.132/ossVodBranchWS/branch.asmx";
 
 
 
@@ -60,6 +60,8 @@ namespace RepeairFailedVOD
                     string ProviderID = AssetServerMap.ProviderId;
                     string ProviderAssetID = AssetServerMap.ProviderAssetId;
                     Guid ClusterID = AssetServerMap.VServerDiskInformation.VServerInformation.ClusterId;
+                    Guid JobGuid = new Guid();
+                    
                                         
                     AssetInfo[] AssetsInfo = VodBranch.GetAssetServerMap(ProviderID, ProviderAssetID, ClusterID, nullGuid, null);
                     if ( AssetsInfo.Length < 2 )
@@ -81,7 +83,21 @@ namespace RepeairFailedVOD
 
                         if (TryToDo)
                         {
+                            // It needed for make a Job
+
                             JobType jb = new JobType();
+                            string BackendName= "";
+                            string AssetName = "";                     
+                            string SourceLocation = "";
+
+                            Random rnd = new Random();
+                            int rndMinutes = rnd.Next(1, 10);
+                            DateTime ScheduleTime = DateTime.Now;
+                                                        
+                            ScheduleTime.AddMinutes(rndMinutes);
+                            
+                            
+
 
                             AssetInfo[] JobAssetsInfo = VodBranch.GetClusterAssetJobMapByAssetID(0, 0, true, ProviderAssetID);
                             foreach (AssetInfo JobAssetInfo in JobAssetsInfo)
@@ -90,6 +106,9 @@ namespace RepeairFailedVOD
                                 {
                                     Log(ProviderAssetID + ": The Job was " + JobAssetInfo.JobType );
                                     jb = JobAssetInfo.JobType;
+                                    BackendName = JobAssetInfo.Backend;
+                                    AssetName = JobAssetInfo.AssetName;
+                                    SourceLocation = JobAssetInfo.SourceLocation;
                                     break;
                                 }
                             }
@@ -98,11 +117,13 @@ namespace RepeairFailedVOD
                             { 
                                 case (JobType.Copy):
                                     Console.WriteLine("Copy this Assets");
-                                    Log(ProviderAssetID + ": We will try to Copy to " + AssetServerMap.VServerDiskInformation.VServerInformation.ClusterName);
+                                    JobGuid = VodBranch.NewClusterJob(AssetName, ProviderAssetID, ProviderID, ClusterID, BackendName, SourceLocation, jb, ScheduleTime, null, 0, 3);
+                                    Log(ProviderAssetID + " : We will try to Copy to " + AssetServerMap.VServerDiskInformation.VServerInformation.ClusterName + " Job guid " + JobGuid);
                                 break;
                                 case (JobType.Delete):
                                     Console.WriteLine("Delete this Assets");
-                                    Log(ProviderAssetID + ": We will try to Delete from " + AssetServerMap.VServerDiskInformation.VServerInformation.ClusterName);
+                                    JobGuid = VodBranch.NewClusterJob(AssetName, ProviderAssetID, ProviderID, ClusterID, BackendName, SourceLocation, jb, ScheduleTime, null, 0, 3);
+                                    Log(ProviderAssetID + " : We will Delete this asset. Job guid " + JobGuid + " it will start at " + ScheduleTime.ToString("yyyy-MM-dd HH:mm:ss"));
                                 break;
                             }
 
@@ -127,7 +148,7 @@ namespace RepeairFailedVOD
             } finally { 
                 Log("End Program");
                 Console.WriteLine("End Program");
-                Console.ReadLine();
+                //Console.ReadLine();
             }
                 
         }
