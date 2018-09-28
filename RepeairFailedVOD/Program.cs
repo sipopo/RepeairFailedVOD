@@ -5,12 +5,48 @@ using System.Text;
 using System.Net;
 using System.IO;
 using System.Diagnostics;
+using System.Threading;
 
 namespace RepeairFailedVOD
 {
     class Program
     {
-        static void Main(string[] args)
+        
+        static void CheckJobExecution(object JobID)
+        {
+            // Check running Job
+            try
+            {
+                Guid JobGuid = Guid.Parse("00000000-0000-0000-0000-000000000000");
+                if (Guid.TryParse(JobID.ToString(), out JobGuid))
+                { 
+                    OssVodBranchWS VodBranch = new OssVodBranchWS();
+                    VodBranch.Credentials = new NetworkCredential("IPTVServices", "P23R@vor", "BRMSK");
+                    VodBranch.Url = "http://78.107.199.132/ossVodBranchWS/branch.asmx";
+                    
+                    AssetInfo AssetInfo = new AssetInfo();
+
+                    do
+                    {
+                        Thread.Sleep(180000);
+                        AssetInfo = VodBranch.GetAssetInfoByJobId(JobGuid);
+                        Console.WriteLine(AssetInfo.ProviderAssetId + ": Checking job " + JobGuid + ", status : " + AssetInfo.Status + " cluster :" + AssetInfo.ClusterName);
+                        Log(AssetInfo.ProviderAssetId + ": Checking job " + JobGuid + " status : " + AssetInfo.Status + " server :" + AssetInfo.ServerName + "cluster :" + AssetInfo.ClusterName );
+                        
+                    } while ((AssetInfo.Status == JobStatusCode.InProgress) || (AssetInfo.Status == JobStatusCode.Ready));
+                    // Do something more
+                    // Here we need check contract in MDS and remove it. if exist/                    
+                }  
+                              
+            }
+            catch (Exception e)
+            {
+                Log("Error :" + e.Message);
+                Console.WriteLine("Error :" + e.Message);
+            }            
+        }
+
+            static void Main(string[] args)
         {
             try
             {
@@ -120,7 +156,13 @@ namespace RepeairFailedVOD
                                     JobGuid = VodBranch.NewClusterJob(AssetName, ProviderAssetID, ProviderID, ClusterID, BackendName, SourceLocation, jb, ScheduleTime, null, 0, 3);
                                     Log(ProviderAssetID + " : We will try to Copy to " + AssetServerMap.VServerDiskInformation.VServerInformation.ClusterName + " Job guid " + JobGuid);
                                     // After Job ended we need to delete "Bad" price in MDS !!! It is important!!!
-                                break;
+                                    //
+                                    Thread oThread = new Thread(CheckJobExecution);
+                                    object JobID = JobGuid.ToString();
+
+                                    oThread.Start(JobID);
+
+                                    break;
                                 case (JobType.Delete):
                                     Console.WriteLine("Delete this Assets");
                                     JobGuid = VodBranch.NewClusterJob(AssetName, ProviderAssetID, ProviderID, ClusterID, BackendName, SourceLocation, jb, ScheduleTime, null, 0, 3);
