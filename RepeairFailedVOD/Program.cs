@@ -16,7 +16,7 @@ namespace RepeairFailedVOD
             {
                 Log("Start Program");
 
-                int MaxAsset = 20;
+                int MaxAsset = 2;
                 Guid nullGuid = Guid.Parse("00000000-0000-0000-0000-000000000000");
                 
 
@@ -91,10 +91,10 @@ namespace RepeairFailedVOD
                             string SourceLocation = "";
 
                             Random rnd = new Random();
-                            int rndMinutes = rnd.Next(1, 10);
+                            int rndMinutes = rnd.Next(2, 10);
                             DateTime ScheduleTime = DateTime.Now;
                                                         
-                            ScheduleTime.AddMinutes(rndMinutes);
+                            ScheduleTime = ScheduleTime.AddMinutes(rndMinutes);
                             
                             
 
@@ -119,6 +119,7 @@ namespace RepeairFailedVOD
                                     Console.WriteLine("Copy this Assets");
                                     JobGuid = VodBranch.NewClusterJob(AssetName, ProviderAssetID, ProviderID, ClusterID, BackendName, SourceLocation, jb, ScheduleTime, null, 0, 3);
                                     Log(ProviderAssetID + " : We will try to Copy to " + AssetServerMap.VServerDiskInformation.VServerInformation.ClusterName + " Job guid " + JobGuid);
+                                    // After Job ended we need to delete "Bad" price in MDS !!! It is important!!!
                                 break;
                                 case (JobType.Delete):
                                     Console.WriteLine("Delete this Assets");
