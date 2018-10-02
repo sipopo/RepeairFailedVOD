@@ -6,6 +6,8 @@ using System.Net;
 using System.IO;
 using System.Diagnostics;
 using System.Threading;
+using ContractManagmentProxyClass;
+//using System.Configuration;
 
 namespace RepeairFailedVOD
 {
@@ -14,15 +16,18 @@ namespace RepeairFailedVOD
         
         static void CheckJobExecution(object JobID)
         {
+            string ErrorJob = ""; 
             // Check running Job
             try
             {
                 Guid JobGuid = Guid.Parse("00000000-0000-0000-0000-000000000000");
                 if (Guid.TryParse(JobID.ToString(), out JobGuid))
-                { 
+                {
+                    ErrorJob = JobGuid.ToString();
+
                     OssVodBranchWS VodBranch = new OssVodBranchWS();
-                    VodBranch.Credentials = new NetworkCredential("IPTVServices", "P23R@vor", "BRMSK");
-                    VodBranch.Url = "http://78.107.199.132/ossVodBranchWS/branch.asmx";
+                    VodBranch.Credentials = new NetworkCredential(Properties.Settings.Default.User, Properties.Settings.Default.Password, Properties.Settings.Default.Domain);
+                    VodBranch.Url = Properties.Settings.Default.VodBranch;
                     
                     AssetInfo AssetInfo = new AssetInfo();
 
@@ -30,39 +35,90 @@ namespace RepeairFailedVOD
                     {
                         Thread.Sleep(180000);
                         AssetInfo = VodBranch.GetAssetInfoByJobId(JobGuid);
-                        Console.WriteLine(AssetInfo.ProviderAssetId + ": Checking job " + JobGuid + ", status : " + AssetInfo.Status + " cluster :" + AssetInfo.ClusterName);
-                        Log(AssetInfo.ProviderAssetId + ": Checking job " + JobGuid + " status : " + AssetInfo.Status + " server :" + AssetInfo.ServerName + "cluster :" + AssetInfo.ClusterName );
+                        Console.WriteLine(AssetInfo.ProviderAssetId + ": Checking job " + JobGuid + ", status :" + AssetInfo.Status);
+                        Log(AssetInfo.ProviderAssetId + ": Checking job " + JobGuid + " , status :" + AssetInfo.Status);
                         
                     } while ((AssetInfo.Status == JobStatusCode.InProgress) || (AssetInfo.Status == JobStatusCode.Ready));
                     // Do something more
-                    // Here we need check contract in MDS and remove it. if exist/                    
-                }  
-                              
+                    // Here we need check contract in MDS and remove it. if exist/    
+                    
+                    DefaultBinding_IContractManagement mdsContract = new DefaultBinding_IContractManagement();                    
+                    mdsContract.Url = Properties.Settings.Default.ContractManagmentUrl;
+                    mdsContract.Credentials = new NetworkCredential(Properties.Settings.Default.User, Properties.Settings.Default.Password, Properties.Settings.Default.Domain);
+
+                    Contract[] Contracts = mdsContract.ReadContractByAsset("Asset", AssetInfo.ProviderId, AssetInfo.ProviderAssetId );
+                    Log(AssetInfo.ProviderAssetId + ": the number of contracts is " + Contracts.Length );
+                    foreach (Contract cont in Contracts)
+                    {
+                        if (cont.Purchase.PurchaseType == "External")
+                        {
+                            Log(AssetInfo.ProviderAssetId + ": the contract " + cont.ContractId + " is ok ");
+                        } else
+                        {
+                            Log(AssetInfo.ProviderAssetId + ": the contract " + cont.ContractId + " we shoud delete it");
+                            mdsContract.RemoveContract(cont.ContractProviderId, cont.ContractId);
+                            Log(AssetInfo.ProviderAssetId + ": the contract " + cont.ContractId + " was deleted ");
+                        }                        
+                    }
+
+                }
+
             }
             catch (Exception e)
             {
-                Log("Error :" + e.Message);
+                Log("Error : " + ErrorJob + " " + e.Message);
                 Console.WriteLine("Error :" + e.Message);
             }            
+        }
+
+        static void CheckMDS()
+        {
+            DefaultBinding_IContractManagement mdsContract = new DefaultBinding_IContractManagement();
+            mdsContract.Url = Properties.Settings.Default.ContractManagmentUrl;
+            mdsContract.Credentials = new NetworkCredential(Properties.Settings.Default.User, Properties.Settings.Default.Password, Properties.Settings.Default.Domain);
+
+            //Contract[] Contracts = mdsContract.ReadContractByAsset("Asset", AssetInfo.ProviderAssetId, AssetInfo.ProviderId);
+            Contract[] Contracts = mdsContract.ReadContractByAsset("Asset", "WarnerBros", "HarryPotterChamberOfSecrets688");
+            //Log(AssetInfo.ProviderAssetId + ": the number of contracts is " + Contracts.Length);
+            Console.WriteLine("Contracts :" + Contracts.Length);
+            foreach (Contract cont in Contracts)
+            {
+                Console.WriteLine(cont.Purchase.PurchaseType);
+
+                if (cont.Purchase.PurchaseType == "External")
+                {
+                    //Log(AssetInfo.ProviderAssetId + ": the contact " + cont.ContractId + " is ok ");
+                    Console.WriteLine("OK " + cont.ContractId);
+                }
+                else
+                {
+                    //Log(AssetInfo.ProviderAssetId + ": the contarc " + cont.ContractId + " we shoud delete ");
+                    Console.WriteLine("delete " + cont.ContractId);
+                    mdsContract.RemoveContract(cont.ContractProviderId, cont.ContractId);
+                }
+            }
         }
 
             static void Main(string[] args)
         {
             try
             {
-                Log("Start Program");
-
-                int MaxAsset = 2;
-                Guid nullGuid = Guid.Parse("00000000-0000-0000-0000-000000000000");
                 
+
+                // CheckMDS();
+                // Console.ReadLine();
+
+                
+                int MaxAsset = Properties.Settings.Default.MaxWorkingAsset;
+                Guid nullGuid = Guid.Parse("00000000-0000-0000-0000-000000000000");
+
+                Log("Start Program. MaxWorking assets = " + MaxAsset);
 
                 OssVodBranchWS VodBranch = new OssVodBranchWS();
 
-                VodBranch.Credentials = new NetworkCredential("IPTVServices", "P23R@vor", "BRMSK");
-                VodBranch.Url = "http://78.107.199.132/ossVodBranchWS/branch.asmx";
-
-
-
+                VodBranch.Credentials = new NetworkCredential(Properties.Settings.Default.User, Properties.Settings.Default.Password, Properties.Settings.Default.Domain);
+                VodBranch.Url = Properties.Settings.Default.VodBranch;
+                
                 Log("Check status of Clusters");
                 List<Cluster> BadClusters = new List<Cluster>();                                
                 Cluster[] Clusters = VodBranch.GetAllClusterInfo();
@@ -182,7 +238,7 @@ namespace RepeairFailedVOD
                     //GetAllVServerForCluster  -- check status servers 
                 }
 
-
+    
             } catch (Exception e)                
             {
                 Log("Error :" + e.Message );

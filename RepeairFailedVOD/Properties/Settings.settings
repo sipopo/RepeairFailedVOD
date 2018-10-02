@@ -1,0 +1,24 @@
+﻿<?xml version='1.0' encoding='utf-8'?>
+<SettingsFile xmlns="http://schemas.microsoft.com/VisualStudio/2004/01/settings" CurrentProfile="(Default)" GeneratedClassNamespace="RepeairFailedVOD.Properties" GeneratedClassName="Settings">
+  <Profiles />
+  <Settings>
+    <Setting Name="ContractManagmentUrl" Type="System.String" Scope="Application">
+      <Value Profile="(Default)">http://85.21.136.25/MDSContractManagement/ContractManagementService.svc</Value>
+    </Setting>
+    <Setting Name="VodBranch" Type="System.String" Scope="Application">
+      <Value Profile="(Default)">http://78.107.199.132/ossVodBranchWS/branch.asmx</Value>
+    </Setting>
+    <Setting Name="User" Type="System.String" Scope="Application">
+      <Value Profile="(Default)">IPTVServices</Value>
+    </Setting>
+    <Setting Name="Password" Type="System.String" Scope="Application">
+      <Value Profile="(Default)">P23R@vor</Value>
+    </Setting>
+    <Setting Name="Domain" Type="System.String" Scope="Application">
+      <Value Profile="(Default)">BRMSK</Value>
+    </Setting>
+    <Setting Name="MaxWorkingAsset" Type="System.Int32" Scope="Application">
+      <Value Profile="(Default)">5</Value>
+    </Setting>
+  </Settings>
+</SettingsFile>
