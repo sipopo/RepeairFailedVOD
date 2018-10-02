@@ -263,8 +263,8 @@ namespace RepeairFailedVOD
             try
             {
                 using (StreamWriter w = File.AppendText(path + "\\" + filename))
-                {
-                    w.Write("{0}\t", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+                {                    
+                    w.Write("{0} [{1}]\t", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"), Process.GetCurrentProcess().Id);
                     w.WriteLine(logMessage);
                 }
             }
