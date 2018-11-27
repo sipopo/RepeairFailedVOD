@@ -41,7 +41,8 @@ namespace RepeairFailedVOD
                     } while ((AssetInfo.Status == JobStatusCode.InProgress) || (AssetInfo.Status == JobStatusCode.Ready));
                     // Do something more
                     // Here we need check contract in MDS and remove it. if exist/    
-                    
+                    Thread.Sleep(180000);
+
                     DefaultBinding_IContractManagement mdsContract = new DefaultBinding_IContractManagement();                    
                     mdsContract.Url = Properties.Settings.Default.ContractManagmentUrl;
                     mdsContract.Credentials = new NetworkCredential(Properties.Settings.Default.User, Properties.Settings.Default.Password, Properties.Settings.Default.Domain);
@@ -153,12 +154,14 @@ namespace RepeairFailedVOD
                     string ProviderAssetID = AssetServerMap.ProviderAssetId;
                     Guid ClusterID = AssetServerMap.VServerDiskInformation.VServerInformation.ClusterId;
                     Guid JobGuid = new Guid();
-                    
-                                        
+
+                    Console.WriteLine(ProviderAssetID + " in cluster " + AssetServerMap.VServerDiskInformation.VServerInformation.ClusterName + " Assetstatus " + AssetServerMap.Status);
+                    Log(ProviderAssetID + " in cluster " + AssetServerMap.VServerDiskInformation.VServerInformation.ClusterName + " Assetstatus " + AssetServerMap.Status);                                        
+
                     AssetInfo[] AssetsInfo = VodBranch.GetAssetServerMap(ProviderID, ProviderAssetID, ClusterID, nullGuid, null);
-                    if ( AssetsInfo.Length < 2 )
+                    if (AssetsInfo.Length < 1)
                     {
-                        Log(ProviderAssetID +  ": In cluster " + AssetServerMap.VServerDiskInformation.VServerInformation.ClusterName + " we have only " + AssetsInfo.Length + " asset(s)");
+                        Log(ProviderAssetID + ": In cluster " + AssetServerMap.VServerDiskInformation.VServerInformation.ClusterName + " we have only " + AssetsInfo.Length + " asset(s)");
                         Console.WriteLine(ProviderAssetID + ": In cluster " + AssetServerMap.VServerDiskInformation.VServerInformation.ClusterName + " we have only " + AssetsInfo.Length + " asset(s)");
 
                         bool TryToDo = true;
@@ -166,7 +169,7 @@ namespace RepeairFailedVOD
                         foreach (Cluster BadCluster in BadClusters)
                         {
                             // We want to know the health of Cluster
-                            if (AssetServerMap.VServerDiskInformation.VServerInformation.ClusterId == BadCluster.ClusterId) 
+                            if (AssetServerMap.VServerDiskInformation.VServerInformation.ClusterId == BadCluster.ClusterId)
                             {
                                 TryToDo = false;
                                 break;
@@ -178,25 +181,22 @@ namespace RepeairFailedVOD
                             // It needed for make a Job
 
                             JobType jb = new JobType();
-                            string BackendName= "";
-                            string AssetName = "";                     
+                            string BackendName = "";
+                            string AssetName = "";
                             string SourceLocation = "";
 
                             Random rnd = new Random();
                             int rndMinutes = rnd.Next(2, 10);
                             DateTime ScheduleTime = DateTime.Now;
-                                                        
-                            ScheduleTime = ScheduleTime.AddMinutes(rndMinutes);
-                            
-                            
 
+                            ScheduleTime = ScheduleTime.AddMinutes(rndMinutes);
 
                             AssetInfo[] JobAssetsInfo = VodBranch.GetClusterAssetJobMapByAssetID(0, 0, true, ProviderAssetID);
                             foreach (AssetInfo JobAssetInfo in JobAssetsInfo)
                             {
                                 if (JobAssetInfo.ClusterId == ClusterID)
                                 {
-                                    Log(ProviderAssetID + ": The Job was " + JobAssetInfo.JobType );
+                                    Log(ProviderAssetID + ": The Job was " + JobAssetInfo.JobType);
                                     jb = JobAssetInfo.JobType;
                                     BackendName = JobAssetInfo.Backend;
                                     AssetName = JobAssetInfo.AssetName;
@@ -204,9 +204,9 @@ namespace RepeairFailedVOD
                                     break;
                                 }
                             }
-                     
+
                             switch (jb)
-                            { 
+                            {
                                 case (JobType.Copy):
                                     Console.WriteLine("Copy this Assets");
                                     JobGuid = VodBranch.NewClusterJob(AssetName, ProviderAssetID, ProviderID, ClusterID, BackendName, SourceLocation, jb, ScheduleTime, null, 0, 3);
@@ -217,21 +217,63 @@ namespace RepeairFailedVOD
                                     object JobID = JobGuid.ToString();
 
                                     oThread.Start(JobID);
+                                    i = i + 1;
 
                                     break;
                                 case (JobType.Delete):
                                     Console.WriteLine("Delete this Assets");
                                     JobGuid = VodBranch.NewClusterJob(AssetName, ProviderAssetID, ProviderID, ClusterID, BackendName, SourceLocation, jb, ScheduleTime, null, 0, 3);
                                     Log(ProviderAssetID + " : We will Delete this asset. Job guid " + JobGuid + " it will start at " + ScheduleTime.ToString("yyyy-MM-dd HH:mm:ss"));
-                                break;
+                                    i = i + 1;
+
+                                    break;
                             }
 
                             //Console.WriteLine(ProviderAssetID + ": We will try to Deploy on " + AssetServerMap.VServerDiskInformation.VServerInformation.ClusterName);
                         }
+                    } else if (AssetServerMap.Status == AssetMapStatusCode.Unavailable)                                               
+                    {
+                        // Try to catch unavailable status. Here we only redeploy asset
+                        JobType jb = new JobType();
+                        string BackendName = "";
+                        string AssetName = "";
+                        string SourceLocation = "";
+
+                        Random rnd = new Random();
+                        int rndMinutes = rnd.Next(2, 10);
+                        DateTime ScheduleTime = DateTime.Now;
+
+                        ScheduleTime = ScheduleTime.AddMinutes(rndMinutes);
+
+                        AssetInfo[] JobAssetsInfo = VodBranch.GetClusterAssetJobMapByAssetID(0, 0, true, ProviderAssetID);
+                        foreach (AssetInfo JobAssetInfo in JobAssetsInfo)
+                        {
+                            if (JobAssetInfo.ClusterId == ClusterID)
+                            {
+                                Log(ProviderAssetID + ": The Job was " + JobAssetInfo.JobType);
+                                jb = JobAssetInfo.JobType;
+                                BackendName = JobAssetInfo.Backend;
+                                AssetName = JobAssetInfo.AssetName;
+                                SourceLocation = JobAssetInfo.SourceLocation;
+                                break;
+                            }
+                        }
+
+                        
+
+                        Console.WriteLine("Copy this Assets");
+                        JobGuid = VodBranch.NewClusterJob(AssetName, ProviderAssetID, ProviderID, ClusterID, BackendName, SourceLocation, JobType.Copy, ScheduleTime, null, 0, 3);
+                        Log(ProviderAssetID + " : We will try to Copy to " + AssetServerMap.VServerDiskInformation.VServerInformation.ClusterName + " Job guid " + JobGuid);
+                       
+                        Thread oThread = new Thread(CheckJobExecution);
+                        object JobID = JobGuid.ToString();
+
+                        oThread.Start(JobID);
+                        i = i + 1;
                     }
 
 
-                    i = i + 1;
+                    
                     if (i>MaxAsset) { break; }
 
                     //AssetServerMap.Status --
@@ -247,7 +289,7 @@ namespace RepeairFailedVOD
             } finally { 
                 Log("End Program");
                 Console.WriteLine("End Program");
-                //Console.ReadLine();
+                Console.ReadLine();
             }
                 
         }
